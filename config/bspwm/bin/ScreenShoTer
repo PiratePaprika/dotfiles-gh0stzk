@@ -16,8 +16,9 @@
 #   - System notifications when taking screenshots
 #   - Automatic clipboard copy
 #   - Saves screenshots with timestamp
+#   - Only works on BSPWM enviroments
 #
-# Dependencies: maim, xrandr, xdotool, rofi, xclip, dunst
+# Dependencies: maim, rofi, xclip, dunst
 #
 # Copyright (C) 2021-2026 gh0stzk <z0mbi3.zk@protonmail.com>
 # Licensed under GPL-3.0 license
@@ -35,31 +36,11 @@ filename="$dir/Shot-${timestamp}.png"
 s_full=""
 s_select=""
 s_in3="󰔝"
-s_in3select="󰆞 󰔝"
 s_all="󰍹"
 
 # Function to get current monitor geometry based on mouse position
 get_current_monitor() {
-    MONITORS=$(xrandr | grep -o '[0-9]*x[0-9]*[+-][0-9]*[+-][0-9]*')
-    XMOUSE=$(xdotool getmouselocation | awk -F "[: ]" '{print $2}')
-    YMOUSE=$(xdotool getmouselocation | awk -F "[: ]" '{print $4}')
-
-    for mon in ${MONITORS}; do
-        MONW=$(echo ${mon} | awk -F "[x+]" '{print $1}')
-        MONH=$(echo ${mon} | awk -F "[x+]" '{print $2}')
-        MONX=$(echo ${mon} | awk -F "[x+]" '{print $3}')
-        MONY=$(echo ${mon} | awk -F "[x+]" '{print $4}')
-
-        if [ "$XMOUSE" -ge "$MONX" ] && \
-           [ "$XMOUSE" -le $((MONX + MONW)) ] && \
-           [ "$YMOUSE" -ge "$MONY" ] && \
-           [ "$YMOUSE" -le $((MONY + MONH)) ]; then
-                echo "${MONW}x${MONH}+${MONX}+${MONY}"
-                return 0
-        fi
-    done
-
-    return 1
+    bspc query -T -m pointed | jq -r '.rectangle | "\(.width)x\(.height)+\(.x)+\(.y)"'
 }
 
 rofi_cmd() {
@@ -71,7 +52,7 @@ rofi_cmd() {
 }
 
 run_rofi() {
-    printf "%s\n%s\n%s\n%s\n" "$s_full" "$s_select" "$s_in3" "$s_in3select" "$s_all" | rofi_cmd
+    printf "%s\n%s\n%s\n%s\n" "$s_full" "$s_select" "$s_in3" "$s_all" | rofi_cmd
 }
 
 show_notification() {
@@ -128,10 +109,6 @@ run_cmd() {
             take_screenshot "select" false ;;
         --in3)
             countdown 3 && take_screenshot "full" false ;;
-        # INFO: new option for screenshot in selected area in 3 seconds
-        --in3select)
-            countdown 3 && take_screenshot "select" false ;;
-
         --all)
             take_screenshot "full" true ;;
     esac
@@ -145,8 +122,6 @@ case ${select_option} in
         run_cmd --sel ;;
     "$s_in3")
         run_cmd --in3 ;;
-    "$s_in3select")
-        run_cmd --in3select ;;
     "$s_all")
         run_cmd --all ;;
 esac
